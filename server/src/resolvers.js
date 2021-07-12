@@ -29,6 +29,50 @@ module.exports = {
     me: async (_, __, { dataSources }) =>
       dataSources.userAPI.findOrCreateUser(),
   },
+  Mutation: {
+    bookTrips: async (_, { launchIds }, { dataSources }) => {
+      const results = await dataSources.userAPI.bookTrips({ launchIds });
+      const launches = await dataSources.launchAPI.getLaunchesByIds({
+        launchIds,
+      });
+
+      return {
+        success: results && results.length === launchIds.length,
+        message:
+          results.length === launchIds.length
+            ? 'trips booked successfully'
+            : `the following launches couldn't be booked: ${launchIds.filter(
+                id => !results.includes(id),
+              )}`,
+        launches,
+      };
+    },
+    cancelTrip: async (_, { launchId }, { dataSources }) => {
+      const result = dataSources.userAPI.cancelTrip({ launchId });
+
+      if (!result)
+        return {
+          success: false,
+          message: 'failed to cancel trip',
+        };
+
+      const launch = await dataSources.launchAPI.getLaunchById({ launchId });
+      return {
+        success: true,
+        message: 'trip cancelled',
+        launches: [launch],
+      };
+    },
+    login: async (_, { email }, { dataSources }) => {
+      const user = await dataSources.userAPI.findOrCreateUser({ email });
+      if (user) {
+        user.token = Buffer.from(email).toString('base64');
+        return user;
+      }
+    },
+    uploadProfileImage: async(_, { file }, { dataSources }) =>
+      dataSources.userAPI.uploadProfileImage({ file }),
+  },
   Launch: {
     isBooked: async (launch, _, { dataSources }) =>
       dataSources.userAPI.isBookedOnLaunch({ launchId: launch.id }),
